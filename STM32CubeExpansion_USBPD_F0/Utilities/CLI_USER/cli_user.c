@@ -44,9 +44,10 @@ void prvSerialReceiveStart(void);
 /* Exported variables --------------------------------------------------------*/
 /* Const messages output for the command console. */
 const char * const CLI_ConfigWelcomeMessage[CLI_WELCOME_MESSAGE_LEN] = { /** Welcome message string */
-  "\r\nConsole v0.4 USBPD Application Demo\r\n",
+  "\r\nP-NUCLEO-USB002 Demo v2.0.0\r\n",
+  "Console v0.5 USBPD Application Demo\r\n",
   "Type help for a list of commands.\r\nSTMicroelectronics\r\n",
-  "Copyright (c) 2017 - All Rights Reserved.\r\n"
+  "Copyright (c) 2020 - All Rights Reserved.\r\n"
 };
 const char * const CLI_ConfigEndOfOutputMessage = ">"; /** String after the message */
 const char * const CLI_ConfigNewLine = "\r\n"; /** New line */

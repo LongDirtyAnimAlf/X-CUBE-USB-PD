@@ -952,6 +952,27 @@ void USBPD_DPM_EnterErrorRecovery(uint8_t PortNum)
 }
 
 /**
+  * @brief  DPM callback to allow PE to forward extended message information.
+  * @param  PortNum Port number
+  * @param  MsgType Type of message to be handled in DPM
+  *         This parameter can be one of the following values:
+  *           @arg @ref USBPD_EXT_SECURITY_REQUEST Security Request extended message
+  *           @arg @ref USBPD_EXT_SECURITY_RESPONSE Security Response extended message
+  * @param  ptrData   Pointer on address Extended Message data could be read (u8 pointer)
+  * @param  DataSize  Nb of u8 that compose Extended message
+  * @retval None
+  */
+#ifdef USBPD_REV30_SUPPORT
+void USBPD_DPM_ExtendedMessageReceived(uint8_t PortNum, USBPD_ExtendedMsg_TypeDef MsgType, uint8_t *ptrData, uint16_t DataSize)
+{
+/* USER CODE BEGIN USBPD_DPM_ExtendedMessageReceived */
+
+/* USER CODE END USBPD_DPM_ExtendedMessageReceived */
+}
+#endif /* USBPD_REV30_SUPPORT */
+
+
+/**
   * @brief  DPM callback used to know user choice about Data Role Swap.
   * @param  PortNum Port number
   * @retval USBPD_REJECT, UBPD_ACCEPT

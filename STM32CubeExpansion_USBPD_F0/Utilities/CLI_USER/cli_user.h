@@ -55,7 +55,7 @@
 #define CLI_QUEUE_TX_LENGTH     5
 #define CLI_QUEUE_RX_LENGTH	3
 
-#define CLI_WELCOME_MESSAGE_LEN 3
+#define CLI_WELCOME_MESSAGE_LEN 4
    
 #define DBG_MODULE  /* strip debug code at compile time */
 

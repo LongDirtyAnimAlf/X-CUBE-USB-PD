@@ -81,7 +81,9 @@ const USBPD_SettingsTypeDef DPM_Settings[USBPD_PORT_COUNT] =
     .CAD_RoleToggle = USBPD_TRUE,               /* cad role toogle                                         */
     .CAD_TryFeature = USBPD_FALSE,              /* cad try feature                                         */
     .CAD_AccesorySupport = USBPD_FALSE,         /* cas accessory support                                   */
+    #if !defined(USBPD_REV30_SUPPORT)
     .reserved = 0,                              /* uint32_t reserved:16;                                   */
+    #endif /* USBPD_REV30_SUPPORT */
 
     .CAD_SRCToogleTime          = 40,                    /* uint8_t CAD_SRCToogleTime; */
     .CAD_SNKToogleTime          = 40,                    /* uint8_t CAD_SNKToogleTime; */
@@ -99,8 +101,9 @@ const USBPD_SettingsTypeDef DPM_Settings[USBPD_PORT_COUNT] =
     .CAD_RoleToggle = USBPD_TRUE,               /* cad role toogle                                         */
     .CAD_TryFeature = USBPD_FALSE,              /* cad try feature                                         */
     .CAD_AccesorySupport = USBPD_FALSE,         /* cas accessory support                                   */
+    #if !defined(USBPD_REV30_SUPPORT)
     .reserved = 0,                              /* uint32_t reserved:16;                                   */
-
+    #endif /* USBPD_REV30_SUPPORT */
     .CAD_SRCToogleTime          = 40,           /* uint8_t CAD_SRCToogleTime; */
     .CAD_SNKToogleTime          = 40,           /* uint8_t CAD_SNKToogleTime; */
   }

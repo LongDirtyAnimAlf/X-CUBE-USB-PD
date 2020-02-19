@@ -94,6 +94,9 @@ static BaseType_t prvProfilesCommandFunc( char *pcWriteBuffer, size_t xWriteBuff
 static BaseType_t prvStatusCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvRequestCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 static BaseType_t prvPRSwapCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvDataVACommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvHardResetCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
+static BaseType_t prvSystemResetCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString );
 
 /* Commands structure definition ---------------------------------------------*/
 /** @defgroup CLI_Commands_Definition CLI Commands Definition
@@ -203,6 +206,64 @@ static const CLI_Command_Definition_t xPRSwapCommand2 =
   prvPRSwapCommandFunc, /* The function to run. */
   PORT_PARAM_ENABLE 
 };
+
+static const CLI_Command_Definition_t xDataVACommand =
+{
+  "data",
+#if PORT_PARAM_ENABLE == 1
+  "d | data <port> : show the status of the PD comm for the port\r\n",
+#else
+  "d | data : show the status of the PD comm\r\n",
+#endif /* PORT_PARAM_ENABLE */
+  prvDataVACommandFunc, /* The function to run. */
+  PORT_PARAM_ENABLE
+};
+static const CLI_Command_Definition_t xDataVACommand2 =
+{
+  "d",
+  "",
+  prvDataVACommandFunc, /* The function to run. */
+  PORT_PARAM_ENABLE
+};
+
+
+static const CLI_Command_Definition_t xHardResetCommand =
+{
+	"hardreset",
+#if PORT_PARAM_ENABLE == 1
+	"h | hardreset <port> : perform a hardreset for the port\r\n",
+#else
+	"h | hardreset : perform a hardreset\r\n",
+#endif /* PORT_PARAM_ENABLE */
+	prvHardResetCommandFunc, /* The function to run. */
+	PORT_PARAM_ENABLE
+};
+static const CLI_Command_Definition_t xHardResetCommand2 =
+{
+	"h",
+    "",
+	prvHardResetCommandFunc, /* The function to run. */
+	PORT_PARAM_ENABLE
+};
+/**
+ * brief  Debug command definition
+ */
+static const CLI_Command_Definition_t xSystemResetCommand =
+{
+	"systemreset",
+    "z | systemreset : perform a system reset\r\n",
+	prvSystemResetCommandFunc, /* The function to run. */
+	-1 /* Generic n parameter is expected. */
+};
+static const CLI_Command_Definition_t xSystemResetCommand2 =
+{
+	"z",
+	"",
+	prvSystemResetCommandFunc, /* The function to run. */
+	-1 /* Generic n parameter is expected. */
+};
+
+
 /**
  * @}
  */
@@ -218,12 +279,18 @@ void CLI_RegisterCommands( void )
   FreeRTOS_CLIRegisterCommand( &xStatusCommand );
   FreeRTOS_CLIRegisterCommand( &xRequestCommand );
   FreeRTOS_CLIRegisterCommand( &xPRSwapCommand );
+  FreeRTOS_CLIRegisterCommand( &xDataVACommand );
+  FreeRTOS_CLIRegisterCommand( &xHardResetCommand );
+  FreeRTOS_CLIRegisterCommand( &xSystemResetCommand );
 
   FreeRTOS_CLIRegisterCommand( &xWelcomeCommand2 );
   FreeRTOS_CLIRegisterCommand( &xProfilesCommand2 );
   FreeRTOS_CLIRegisterCommand( &xStatusCommand2 );
   FreeRTOS_CLIRegisterCommand( &xRequestCommand2 );
   FreeRTOS_CLIRegisterCommand( &xPRSwapCommand2 );
+  FreeRTOS_CLIRegisterCommand( &xDataVACommand2 );
+  FreeRTOS_CLIRegisterCommand( &xHardResetCommand2 );
+  FreeRTOS_CLIRegisterCommand( &xSystemResetCommand2 );
 }
 
 /** @defgroup CLI_Commands_Callbacks CLI Commands Callbacks
@@ -306,7 +373,7 @@ static BaseType_t prvProfilesCommandFunc( char *pcWriteBuffer, size_t xWriteBuff
     /* get the profiles according to the connection status */
     switch(cConnectionStatus)
     {
-    case 0: /* Unplugged */
+    case USBPD_POWER_NO: /* Unplugged */
       if (cDrpSupport == USBPD_TRUE)
       {
         strcpy(pcWriteBuffer, "DRP role Unplugged\r\n");
@@ -322,25 +389,30 @@ static BaseType_t prvProfilesCommandFunc( char *pcWriteBuffer, size_t xWriteBuff
       }
       break;
 
-    case 1: /* Default 5v, Type-C only */
+    case USBPD_POWER_DEFAULT5V: /* Default 5v, Type-C only */
       strcpy(pcWriteBuffer, cCondAsSink ? "Sink" : "Source");
       strcat(pcWriteBuffer, " role Type-C only\r\n");
       cSRCPDOType = cCondAsSink ? 0 : 1; /* MY_SRC_PDO */
       cSNKPDOType = cCondAsSink ? 1 : 0; /* MY_SNK_PDO */
       break;
-    case 2: /* Implicit Contract Done */
+    case USBPD_POWER_IMPLICITCONTRACT: /* Implicit Contract Done */
       strcpy(pcWriteBuffer, cCondAsSink ? "Sink" : "Source");
       strcat(pcWriteBuffer, " role - Implicit contract\r\n");
         /* as Source in explicit contract it shows the MY_SRC_PDO and RX_SNK_PDO */
       cSRCPDOType = cCondAsSink ? 2 : 1; /* RX_SRC_PDO : MY_SRC_PDO */
       cSNKPDOType = cCondAsSink ? 1 : 2; /* MY_SNK_PDO : RX_SNK_PDO */
       break;
-    case 3: /* Explicit Contract Done */
+    case USBPD_POWER_EXPLICITCONTRACT: /* Explicit Contract Done */
       strcpy(pcWriteBuffer, cCondAsSink ? "Sink" : "Source");
       strcat(pcWriteBuffer, " role - Explicit contract\r\n");
         /* as Source in explicit contract it shows the MY_SRC_PDO and RX_SNK_PDO */
       cSRCPDOType = cCondAsSink ? 2 : 1; /* RX_SRC_PDO : MY_SRC_PDO */
       cSNKPDOType = cCondAsSink ? 1 : 2; /* MY_SNK_PDO : RX_SNK_PDO */
+      break;
+    case USBPD_POWER_TRANSITION:
+      strcpy(pcWriteBuffer, "Power switch\r\n");
+      //cSRCPDOType = 1; /* MY_SRC_PDO */
+      //cSNKPDOType = 1; /* MY_SNK_PDO */
       break;
     default:
       strcpy( pcWriteBuffer, "Error: unknown connection status\r\n");
@@ -581,14 +653,14 @@ static BaseType_t prvStatusCommandFunc( char *pcWriteBuffer, size_t xWriteBuffer
     /* manage different status */
     switch(connStatus)
     {
-    case 0: /* unplugged */
-      strcpy(pcWriteBuffer, "");
+    case USBPD_POWER_NO:
+      strcpy(pcWriteBuffer, "No contract");
       break;
-    case 1: /* Default 5V, Type-C only */
-      sprintf(pcWriteBuffer, " CC%d", (int)cc);
+    case USBPD_POWER_DEFAULT5V:
+      sprintf(pcWriteBuffer, " Default contract : CC%d", (int)cc);
       break;
-    case 2: /* Implicit contract done */
-    case 3: /* Explicit contract done */
+    case USBPD_POWER_IMPLICITCONTRACT:
+    case USBPD_POWER_EXPLICITCONTRACT:
       res = USBPD_DPM_CLI_GetStatusInfo(cPort, &profile, &voltage, NULL);
       if (res == USBPD_OK)
       {
@@ -598,6 +670,11 @@ static BaseType_t prvStatusCommandFunc( char *pcWriteBuffer, size_t xWriteBuffer
       {
         sprintf(pcWriteBuffer, " CC%d", (int)cc);
       }
+      if (connStatus==USBPD_POWER_IMPLICITCONTRACT) strcat(pcWriteBuffer, ": Implicit.");
+      if (connStatus==USBPD_POWER_EXPLICITCONTRACT) strcat(pcWriteBuffer, ": Explicit.");
+      break;
+    case USBPD_POWER_TRANSITION:
+      strcpy(pcWriteBuffer, "Power transition");
       break;
     default: /* Unknown */
       sprintf(pcWriteBuffer, " CC%d Unknown", (int)cc);
@@ -609,6 +686,73 @@ static BaseType_t prvStatusCommandFunc( char *pcWriteBuffer, size_t xWriteBuffer
 
   return connStatus == -1 ? pdFALSE : pdTRUE;
 }
+
+static BaseType_t prvDataVACommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString )
+{
+  /* local variables definition */
+  static portCHAR cPort = USBPD_DEF_PORT;
+  static int8_t connStatus = -1;
+
+  uint16_t pVoltage;
+  uint16_t pCurrent;
+
+  USBPD_PortPowerRole_TypeDef currRole = USBPD_CABLEPLUG_FROMDFPUFP;
+  CCxPin_TypeDef  cc = CCNONE;
+  float voltage = 0;
+  uint8_t profile = 0;
+  uint8_t cDrpSupport = USBPD_FALSE;
+  USBPD_StatusTypeDef res;
+
+  /* To avoid warnings */
+  ( void ) pcWriteBuffer;
+  ( void ) xWriteBufferLen;
+  ( void ) pcCommandString;
+
+  /* Check pointers */
+  configASSERT( pcWriteBuffer );
+  configASSERT( pcCommandString );
+
+  if (connStatus == -1)
+  {
+#if PORT_PARAM_ENABLE == 1
+  /* check the port parameter */
+    cPort = prvCommandCheckPortNumber(pcWriteBuffer, xWriteBufferLen, pcCommandString);
+    /* in case of a wrong PortNumber this command */
+    if (cPort == CLI_PORTNUM_INVALID)
+    {
+      /* reset parameter */
+      connStatus = -1;
+      cPort = USBPD_DEF_PORT;
+
+      /* stop next call */
+      return pdFALSE;
+    }
+#endif /* PORT_PARAM_ENABLE */
+
+    USBPD_DPM_CLI_GetCurrentRole((uint8_t)cPort, &currRole, &connStatus, &cDrpSupport);
+
+    pVoltage = 0;
+    pCurrent = 0;
+    if (USBPD_OK==USBPD_PWR_IF_ReadVA((uint8_t)cPort, &pVoltage, &pCurrent))
+  	{
+        sprintf(pcWriteBuffer, "Port Voltage %d mV ; Port Current %d mA", pVoltage, pCurrent);
+  	}
+    else
+    {
+        sprintf(pcWriteBuffer, "Error Port Voltage %d mV ; Port Current %d mA", pVoltage, pCurrent);
+    }
+    strcat(pcWriteBuffer, "\r\n");
+
+
+  }
+  else
+  {
+    connStatus = -1;
+  }
+
+  return connStatus == -1 ? pdFALSE : pdTRUE;
+}
+
 
 /**
  * @brief  CLI callback for the request command.
@@ -753,7 +897,8 @@ static BaseType_t prvPRSwapCommandFunc( char *pcWriteBuffer, size_t xWriteBuffer
 
   USBPD_DPM_CLI_GetCurrentRole((uint8_t)cPort, &currRole, &connStatus, &cDrpSupport);
   
-  if (connStatus == (USBPD_POWER_EXPLICITCONTRACT+1))
+  //if ( (connStatus != USBPD_POWER_NO) && (connStatus != USBPD_POWER_TRANSITION) )
+  if ( (connStatus == USBPD_POWER_IMPLICITCONTRACT) || (connStatus == USBPD_POWER_EXPLICITCONTRACT) )
   {
     sprintf(pcWriteBuffer, "Power role swap on Port %d\r\n", cPort);
     strcat(pcWriteBuffer, "Current role: ");
@@ -768,10 +913,74 @@ static BaseType_t prvPRSwapCommandFunc( char *pcWriteBuffer, size_t xWriteBuffer
   }
   else
   {
-    strcpy(pcWriteBuffer, "Warning : power role swap not sent, missing explicit contract\r\n");
+    strcpy(pcWriteBuffer, "Warning : power role swap not sent, missing [explicit] contract\r\n");
   }
 
   
+  return pdFALSE;
+}
+
+/**
+ * @brief  CLI callback for the hard reset command.
+ */
+static BaseType_t prvHardResetCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString )
+{
+  /* local variables definition */
+  static portCHAR cPort = USBPD_DEF_PORT;
+  static int8_t connStatus = -1;
+  USBPD_PortPowerRole_TypeDef currRole = USBPD_CABLEPLUG_FROMDFPUFP;
+
+  /* To avoid warnings */
+  ( void ) pcWriteBuffer;
+  ( void ) xWriteBufferLen;
+  ( void ) pcCommandString;
+
+  /* Check pointers */
+  configASSERT( pcWriteBuffer );
+  configASSERT( pcCommandString );
+
+#if PORT_PARAM_ENABLE == 1
+  /* check the port parameter */
+  cPort = prvCommandCheckPortNumber(pcWriteBuffer, xWriteBufferLen, pcCommandString);
+  /* in case of a wrong PortNumber this command */
+  if (cPort == CLI_PORTNUM_INVALID)
+  {
+    /* reset parameter */
+    cPort = USBPD_DEF_PORT;
+
+    /* stop next call */
+    return pdFALSE;
+  }
+#endif /* PORT_PARAM_ENABLE */
+
+  USBPD_DPM_CLI_GetCurrentRole((uint8_t)cPort, &currRole, &connStatus, NULL);
+
+  /* check if the cable is plugged and a contract is reached */
+  if (connStatus != 2)
+  {
+    strcpy(pcWriteBuffer, "Request failed: no contract reached.\r\n");
+    return pdFALSE;
+  }
+
+  sprintf(pcWriteBuffer, "sending hard reset on port: %d\r\n", cPort);
+
+  /* send an hard reset for the port selected */
+  USBPD_DPM_RequestHardReset(cPort);
+
+  return pdFALSE;
+}
+/**
+ * @brief  CLI callback for the system reset command.
+ */
+static BaseType_t prvSystemResetCommandFunc( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString )
+{
+  /* To avoid warnings */
+  ( void ) pcWriteBuffer;
+  ( void ) xWriteBufferLen;
+  ( void ) pcCommandString;
+  
+  strcpy(pcWriteBuffer, "restart");
+  NVIC_SystemReset();
   return pdFALSE;
 }
 
